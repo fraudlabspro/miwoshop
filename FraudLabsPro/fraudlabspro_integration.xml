@@ -1,0 +1,723 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>FraudLabs Pro Fraud Prevention</name>
+    <code>fraudlabspro_integration</code>
+    <version>1.2.2</version>
+    <link>https://www.fraudlabspro.com</link>
+    <author>FraudLabs Pro</author>
+
+    <file path="admin/controller/setting/setting.php">
+        <operation error="skip">
+            <search><![CDATA[$data['entry_fraud_detection'] = $this->language->get('entry_fraud_detection');]]></search>
+            <add position="before"><![CDATA[        $data['entry_flp_test_ip'] = 'Simulate Visitor IP';
+        $data['entry_flp_approved_order_status_id'] = 'Approved Status';
+        $data['entry_flp_review_order_status_id'] = 'Review Status';
+        $data['entry_flp_delete_data'] = 'Remove all FraudLabs Pro data';
+        $data['help_flp_test_ip'] = 'This is only for testing. Please empty the value after the testing.';
+        $data['help_flp_approved_order_status_id'] = 'Order approved by FraudLabs Pro will be assigned to this order status.';
+        $data['help_flp_review_order_status_id'] = 'Order marked as review by FraudLabs Pro will be assigned to this order status.';
+        $data['help_flp_delete_data'] = 'Remove all FraudLabs Pro data from storage.';
+        ]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {]]></search>
+            <add position="replace"><![CDATA[if (($this->request->server['REQUEST_METHOD'] == 'POST') && (isset($this->request->post['purge'])) && ($this->request->post['purge'] == 'TRUE')) {
+            $this->db->query("TRUNCATE `" . DB_PREFIX . "order_fraudlabspro`");
+
+            $this->session->data['success'] = 'Success: You have deleted all FraudLabs Pro data!';
+
+            $this->response->redirect($this->url->link('setting/setting', 'token=' . $this->session->data['token'] . $url, 'SSL'));
+        } elseif (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$data['entry_fraud_detection'] = $this->language->get('entry_fraud_detection');]]></search>
+            <add position="replace"><![CDATA[$data['entry_fraud_detection'] = 'Enable FraudLabs Pro';]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$data['entry_fraud_key'] = $this->language->get('entry_fraud_key');]]></search>
+            <add position="replace"><![CDATA[$data['entry_fraud_key'] = 'API Key';]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$data['entry_fraud_score'] = $this->language->get('entry_fraud_score');]]></search>
+            <add position="replace"><![CDATA[]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$data['entry_fraud_status'] = $this->language->get('entry_fraud_status');]]></search>
+            <add position="replace"><![CDATA[$data['entry_fraud_status'] = 'Fraud Status';]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$data['help_fraud_detection'] = $this->language->get('help_fraud_detection');]]></search>
+            <add position="replace"><![CDATA[$data['help_fraud_detection'] = 'FraudLabs Pro is a fraud prevention service. You can register a free license key at <a href="https://www.fraudlabspro.com/sign-up?r=miwoshop" target="_blank">https://www.fraudlabspro.com/sign-up</a> if you do not have one.';]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$data['help_fraud_score'] = $this->language->get('help_fraud_score');]]></search>
+            <add position="replace"><![CDATA[]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$data['help_fraud_status'] = $this->language->get('help_fraud_status');]]></search>
+            <add position="replace"><![CDATA[$data['help_fraud_status'] = 'Order rejected by FraudLabs Pro will be assigned to this order status.';]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[if (isset($this->request->post['config_fraud_status_id'])) {]]></search>
+            <add position="before"><![CDATA[        if (isset($this->request->post['config_flp_test_ip'])) {
+            $data['config_flp_test_ip'] = $this->request->post['config_flp_test_ip']; 
+        } else {
+            $data['config_flp_test_ip'] = $this->config->get('config_flp_test_ip');
+        }
+
+        if (isset($this->request->post['config_flp_review_order_status_id'])) {
+            $data['config_flp_review_order_status_id'] = $this->request->post['config_flp_review_order_status_id']; 
+        } else {
+            $data['config_flp_review_order_status_id'] = $this->config->get('config_flp_review_order_status_id');
+        }
+
+        if (isset($this->request->post['config_flp_approved_order_status_id'])) {
+            $data['config_flp_approved_order_status_id'] = $this->request->post['config_flp_approved_order_status_id']; 
+        } else {
+            $data['config_flp_approved_order_status_id'] = $this->config->get('config_flp_approved_order_status_id');
+        }]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$this->load->model('localisation/order_status');]]></search>
+            <add position="after"><![CDATA[
+        // Create new order status: Fraud Review
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "order_status WHERE name='Fraud Review' AND language_id = 1");
+        if ($query->num_rows <= 0){
+            $this->model_localisation_order_status->addOrderStatus(array(
+                'order_status'    => array(
+                    '1'    => array(
+                        'name'    => 'Fraud Review'
+                    ),
+                )
+            ));
+        }
+
+        // Create new order status: Fraud
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "order_status WHERE name='Fraud' AND language_id = 1");
+        if ($query->num_rows <= 0){
+            $this->model_localisation_order_status->addOrderStatus(array(
+                'order_status'    => array(
+                    '1'    => array(
+                        'name'    => 'Fraud'
+                    ),
+                )
+            ));
+        }]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$this->response->setOutput($this->load->view('setting/setting.tpl', $data));]]></search>
+            <add position="before"><![CDATA[        
+        foreach ($data['order_statuses'] as $order_status) {
+            if ($order_status['name'] == 'Processing')
+                if (!$data['config_flp_approved_order_status_id'])
+                    $data['config_flp_approved_order_status_id']  = intval($order_status['order_status_id']);
+
+            if ($order_status['name'] == 'Fraud Review')
+                if (!$data['config_flp_review_order_status_id'])
+                    $data['config_flp_review_order_status_id']  = intval($order_status['order_status_id']);
+
+            if ($order_status['name'] == 'Fraud')
+                if (!$data['config_fraud_status_id'])
+                    $data['config_fraud_status_id']  = intval($order_status['order_status_id']);
+        }
+]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[return !$this->error;]]></search>
+            <add position="before"><![CDATA[        // Create FraudLabs Pro table
+        $query = $this->db->query("SHOW TABLES LIKE '" . DB_PREFIX . "order_fraudlabspro'");
+        if ($query->num_rows <= 0) {
+            $this->db->query("
+            CREATE TABLE IF NOT EXISTS " . DB_PREFIX . "order_fraudlabspro (
+              `order_id` varchar(11) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_country_match` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_high_risk_country` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `distance_in_km` varchar(10) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `distance_in_mile` varchar(10) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_address` varchar(39) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_country` varchar(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_continent` varchar(20) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_region` varchar(21) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_city` varchar(21) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_latitude` varchar(21) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_longitude` varchar(21) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_timezone` varchar(10) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_elevation` varchar(10) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_domain` varchar(50) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_mobile_mnc` varchar(100) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_mobile_mcc` varchar(100) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_mobile_brand` varchar(100) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_netspeed` varchar(10) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_isp_name` varchar(50) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `ip_usage_type` varchar(30) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_free_email` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_new_domain_name` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_proxy_ip_address` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_bin_found` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_bin_country_match` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_bin_name_match` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_bin_phone_match` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_bin_prepaid` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_address_ship_forward` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_bill_ship_city_match` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_bill_ship_state_match` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_bill_ship_country_match` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_bill_ship_postal_match` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_ip_blacklist` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_email_blacklist` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_credit_card_blacklist` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_device_blacklist` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `is_user_blacklist` char(2) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `fraudlabspro_score` char(3) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `fraudlabspro_distribution` char(3) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `fraudlabspro_status` char(10) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `fraudlabspro_id` char(15) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `fraudlabspro_error` char(3) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `fraudlabspro_message` varchar(50) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `fraudlabspro_credits` varchar(10) COLLATE utf8_bin NOT NULL DEFAULT '',
+              `api_key` char(32) COLLATE utf8_bin NOT NULL DEFAULT '',
+              KEY `order_id` (`order_id`)
+            ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_bin");
+        }
+        ]]></add>
+        </operation>
+    </file>
+    <file path="admin/view/template/setting/setting.tpl">
+        <operation error="skip">
+            <search><![CDATA[<label class="col-sm-2 control-label" for="input-fraud-score"><span data-toggle="tooltip" title="<?php echo $help_fraud_score; ?>"><?php echo $entry_fraud_score; ?></span></label>]]></search>
+            <add position="replace" offset="3"><![CDATA[<!--label class="col-sm-2 control-label" for="input-fraud-score"><span data-toggle="tooltip" title="<?php echo $help_fraud_score; ?>"><?php echo $entry_fraud_score; ?></span></label>
+                <div class="col-sm-10">
+                  <input type="text" name="config_fraud_score" value="<?php echo $config_fraud_score; ?>" placeholder="<?php echo $entry_fraud_score; ?>" id="input-fraud-score" class="form-control" />
+                </div-->]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[col-sm-2]]></search>
+            <add position="replace"><![CDATA[col-sm-3]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[col-sm-10]]></search>
+            <add position="replace"><![CDATA[col-sm-9]]></add>
+        </operation>
+        <operation error="skip">
+            <search regex="true"><![CDATA[~<\/div>[\s\n]+<div class="tab-pane" id="tab-server">~]]></search>
+            <add position="before"><![CDATA[              <div class="form-group">
+                <label class="col-sm-3 control-label" for="input-fraud-approve-order-status"><span data-toggle="tooltip" title="<?php echo $help_flp_approved_order_status_id; ?>"><?php echo $entry_flp_approved_order_status_id; ?></span></label>
+                <div class="col-sm-9">
+                  <select name="config_flp_approved_order_status_id" id="input-fraud-approve-order-status" class="form-control">
+                    <?php foreach ($order_statuses as $order_status) { ?>
+                    <?php if ($order_status['order_status_id'] == $config_flp_approved_order_status_id) { ?>
+                    <option value="<?php echo $order_status['order_status_id']; ?>" selected="selected"><?php echo $order_status['name']; ?></option>
+                    <?php } else { ?>
+                    <option value="<?php echo $order_status['order_status_id']; ?>"><?php echo $order_status['name']; ?></option>
+                    <?php } ?>
+                    <?php } ?>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="col-sm-3 control-label" for="input-fraud-review-order-status"><span data-toggle="tooltip" title="<?php echo $help_flp_review_order_status_id; ?>"><?php echo $entry_flp_review_order_status_id; ?></span></label>
+                <div class="col-sm-9">
+                  <select name="config_flp_review_order_status_id" id="input-fraud-review-order-status" class="form-control">
+                    <?php foreach ($order_statuses as $order_status) { ?>
+                    <?php if ($order_status['order_status_id'] == $config_flp_review_order_status_id) { ?>
+                    <option value="<?php echo $order_status['order_status_id']; ?>" selected="selected"><?php echo $order_status['name']; ?></option>
+                    <?php } else { ?>
+                    <option value="<?php echo $order_status['order_status_id']; ?>"><?php echo $order_status['name']; ?></option>
+                    <?php } ?>
+                    <?php } ?>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="col-sm-3 control-label" for="input-flp-test-ip"><span data-toggle="tooltip" title="<?php echo $help_flp_test_ip; ?>"><?php echo $entry_flp_test_ip; ?></span></label>
+                <div class="col-sm-9">
+                  <input type="text" name="config_flp_test_ip" value="<?php echo $config_flp_test_ip; ?>" placeholder="<?php echo $entry_flp_test_ip; ?>" id="input-flp-test-ip" class="form-control" maxlength="15" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="col-sm-3 control-label" for="remove-all-plugin-data"><span data-toggle="tooltip" title="<?php echo $help_flp_delete_data; ?>"><?php echo $entry_flp_delete_data; ?></span></label>
+                <div class="col-sm-9">
+                  <button type="button" id="button-purge" title="Delete All Data" class="btn btn-danger"><i class="fa fa-trash"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="tab-pane" id="tab-server">]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[</form>]]></search>
+            <add position="replace"><![CDATA[</form>
+        <form action="<?php echo $action; ?>" id="form-purge" method="post">
+            <input type="hidden" name="purge" value="">
+        </form>
+        <script type="text/javascript"><!--
+jQuery(document).ready(function($){
+    $('#button-purge').on('click', function(e) {
+        if (!confirm('WARNING: All data will be permanently deleted from the storage. Are you sure you want to proceed with the deletion?')) {
+            e.preventDefault();
+        }
+        else {
+            $('input[name="purge"]').val('TRUE');
+            $('#form-purge').submit();
+        }
+    });
+});
+        //--></script>]]></add>
+        </operation>
+    </file>
+    <file path="catalog/model/checkout/order.php">
+        <operation error="skip">
+            <search><![CDATA[$order_status_id = $this->config->get('config_fraud_status_id');]]></search>
+            <add position="replace"><![CDATA[$order_status_id = $this->config->get('config_flp_review_order_status_id');]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$risk_score = $this->model_checkout_fraud->getFraudScore($order_info);]]></search>
+            <add position="replace"><![CDATA[$fraud_result = $this->model_checkout_fraud->getFraudResult($order_info);
+
+                if (!$safe && $fraud_result->fraudlabspro_status == 'REJECT') {
+                    $order_status_id = $this->config->get('config_fraud_status_id');
+                }
+                elseif (!$safe && $fraud_result->fraudlabspro_status == 'APPROVE') {
+                    $order_status_id = $this->config->get('config_flp_approved_order_status_id');
+                }]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[if (!$safe && $risk_score > $this->config->get('config_fraud_score')) {]]></search>
+            <add position="replace"><![CDATA[elseif (!$safe && $fraud_result->fraudlabspro_status == 'REVIEW') {]]></add>
+        </operation>
+    </file>
+    <file path="catalog/model/checkout/fraud.php">
+        <operation error="skip">
+            <search><![CDATA[public function getFraudScore($data) {]]></search>
+            <add position="before"><![CDATA[    public function getFraudResult($data) {
+        $fraud_info = $this->getFraud($data['order_id']);
+
+        if($fraud_info)
+            return json_encode($fraud_info);
+
+        $this->db->query("ALTER TABLE `" . DB_PREFIX . "order_fraudlabspro` CHANGE COLUMN `ip_address` `ip_address` VARCHAR(39);");
+
+        $ip = $_SERVER['REMOTE_ADDR'];
+
+        $headers = array(
+            'HTTP_CF_CONNECTING_IP', 'HTTP_X_REAL_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_INCAP_CLIENT_IP', 'HTTP_X_SUCURI_CLIENTIP'
+        );
+
+        foreach ($headers as $header) {
+            if (isset($_SERVER[$header]) && filter_var($_SERVER[$header], FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                $ip = $_SERVER[$header];
+            }
+        }
+
+        switch($data['payment_code']){
+            case 'payza':
+            case 'twocheckout':
+            case 'skrill':
+            case 'worldpay':
+                $paymentMode = 'creditcard';
+            break;
+
+            case 'cod':
+                $paymentMode = 'cod';
+            break;
+
+            case 'cheque':
+                $paymentMode = 'cheque';
+            break;
+
+            case 'bank_transfer':
+                $paymentMode = 'bankdeposit';
+            break;
+
+            default:
+                if(substr($data['payment_code'], 0, 6) == 'paypal')
+                    $paymentMode = 'paypal';
+                else
+                    $paymentMode = 'others';
+
+            break;
+        }
+
+        // Get quantity
+        $quantity = 0;
+
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "order_product WHERE order_id = '" . (int)$data['order_id'] . "'");
+        foreach ($query->rows as $product)
+            $quantity += $product['quantity'];
+
+        $url = 'https://api.fraudlabspro.com/v1/order/screen?' . http_build_query(array(
+            'key'                => $this->config->get('config_fraud_key'),
+            'format'            => 'json',
+            'ip'                => (filter_var($this->config->get('config_flp_test_ip'), FILTER_VALIDATE_IP)) ? $this->config->get('config_flp_test_ip') : $ip,
+            'first_name'        => $data['payment_firstname'],
+            'last_name'            => $data['payment_lastname'],
+            'bill_addr'            => trim($data['payment_address_1'] . ' ' . $data['payment_address_2']),
+            'bill_city'            => $data['payment_city'],
+            'bill_state'        => $data['payment_zone'],
+            'bill_zip_code'        => $data['payment_postcode'],
+            'bill_country'        => $data['payment_iso_code_2'],
+            'user_phone'        => $data['telephone'],
+            'ship_addr'            => trim($data['shipping_address_1'] . ' ' . $data['shipping_address_2']),
+            'ship_city'            => $data['shipping_city'],
+            'ship_state'        => $data['shipping_zone'],
+            'ship_zip_code'        => $data['shipping_postcode'],
+            'ship_country'        => $data['shipping_iso_code_2'],
+            'email'                => $data['email'],
+            'email_domain'        => substr($data['email'], strpos($data['email'], '@') + 1),
+            'email_hash'        => $this->hashString($data['email']) ,
+            'user_order_id'        => $data['order_id'],
+            'amount'            => number_format($data['total'], 2, '.', ''),
+            'quantity'            => ($quantity) ? $quantity : 1,
+            'currency'            => $data['currency_code'],
+            'payment_mode'        => $paymentMode,
+            'flp_checksum'        => (isset($_COOKIE['flp_checksum'])) ? $_COOKIE['flp_checksum'] : '',
+            'source'            => 'miwoshop',
+            'source_version'    => '1.2.1',
+        ));
+
+        $request = wp_remote_get($url);
+
+        // Give up fraud check if having network issue
+        if (is_wp_error($request)) {
+            $this->model_checkout_order->addOrderHistory($data['order_id'], $data['order_status_id'], 'Fraud verification skipped due network issue.');
+            return;
+        }
+
+        // Decode HTTP response
+        $json = json_decode(wp_remote_retrieve_body($request));
+
+        // Make sure response is an object
+        if (! is_object($json)) {
+            $this->model_checkout_order->addOrderHistory($data['order_id'], $data['order_status_id'], 'Fraud verification skipped due network issue.');
+            return;
+        }
+
+        // Save fraud verification result
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "order_fraudlabspro` SET order_id = '" . (int)$data['order_id'] . "',
+            is_country_match = '" . $this->db->escape($json->is_country_match) . "',
+            is_high_risk_country = '" . $this->db->escape($json->is_high_risk_country) . "',
+            distance_in_km = '" . $this->db->escape($json->distance_in_km) . "',
+            distance_in_mile = '" . $this->db->escape($json->distance_in_mile) . "',
+            ip_country = '" . $this->db->escape($json->ip_country) . "',
+            ip_region = '" . $this->db->escape($json->ip_region) . "',
+            ip_city = '" . $this->db->escape($json->ip_city) . "',
+            ip_continent = '" . $this->db->escape($json->ip_continent) . "',
+            ip_latitude = '" . $this->db->escape($json->ip_latitude) . "',
+            ip_longitude = '" . $this->db->escape($json->ip_longitude) . "',
+            ip_timezone = '" . $this->db->escape($json->ip_timezone) . "',
+            ip_elevation = '" . $this->db->escape($json->ip_elevation) . "',
+            ip_domain = '" . $this->db->escape($json->ip_domain) . "',
+            ip_mobile_mnc = '" . $this->db->escape($json->ip_mobile_mnc) . "',
+            ip_mobile_mcc = '" . $this->db->escape($json->ip_mobile_mcc) . "',
+            ip_mobile_brand = '" . $this->db->escape($json->ip_mobile_brand) . "',
+            ip_netspeed = '" . $this->db->escape($json->ip_netspeed) . "',
+            ip_isp_name = '" . $this->db->escape($json->ip_isp_name) . "',
+            ip_usage_type = '" . $this->db->escape($json->ip_usage_type) . "',
+            is_free_email = '" . $this->db->escape($json->is_free_email) . "',
+            is_new_domain_name = '" . $this->db->escape($json->is_new_domain_name) . "',
+            is_proxy_ip_address = '" . $this->db->escape($json->is_proxy_ip_address) . "',
+            is_bin_found = '" . $this->db->escape($json->is_bin_found) . "',
+            is_bin_country_match = '" . $this->db->escape($json->is_bin_country_match) . "',
+            is_bin_name_match = '" . $this->db->escape($json->is_bin_name_match) . "',
+            is_bin_phone_match = '" . $this->db->escape($json->is_bin_phone_match) . "',
+            is_bin_prepaid = '" . $this->db->escape($json->is_bin_prepaid) . "',
+            is_address_ship_forward = '" . $this->db->escape($json->is_address_ship_forward) . "',
+            is_bill_ship_city_match = '" . $this->db->escape($json->is_bill_ship_city_match) . "',
+            is_bill_ship_state_match = '" . $this->db->escape($json->is_bill_ship_state_match) . "',
+            is_bill_ship_country_match = '" . $this->db->escape($json->is_bill_ship_country_match) . "',
+            is_bill_ship_postal_match = '" . $this->db->escape($json->is_bill_ship_postal_match) . "',
+            is_ip_blacklist = '" . $this->db->escape($json->is_ip_blacklist) . "',
+            is_email_blacklist = '" . $this->db->escape($json->is_email_blacklist) . "',
+            is_credit_card_blacklist = '" . $this->db->escape($json->is_credit_card_blacklist) . "',
+            is_device_blacklist = '" . $this->db->escape($json->is_device_blacklist) . "',
+            is_user_blacklist = '" . $this->db->escape($json->is_user_blacklist) . "',
+            fraudlabspro_score = '" . $this->db->escape($json->fraudlabspro_score) . "',
+            fraudlabspro_distribution = '" . $this->db->escape($json->fraudlabspro_distribution) . "',
+            fraudlabspro_status = '" . $this->db->escape($json->fraudlabspro_status) . "',
+            fraudlabspro_id = '" . $this->db->escape($json->fraudlabspro_id) . "',
+            fraudlabspro_error = '" . $this->db->escape($json->fraudlabspro_error_code) . "',
+            fraudlabspro_message = '" . $this->db->escape($json->fraudlabspro_message) . "',
+            fraudlabspro_credits = '" .  $this->db->escape($json->fraudlabspro_credits) . "',
+            api_key = '" .  $this->config->get('config_fraud_key') . "',
+            ip_address = '" .  ((filter_var($this->config->get('config_flp_test_ip'), FILTER_VALIDATE_IP)) ? $this->config->get('config_flp_test_ip') : $ip) . "'");
+
+        return $json;
+    }
+
+    private function hashString($s, $prefix='fraudlabspro_'){
+        $hash = $prefix . $s;
+
+        for($i=0; $i<65536; $i++)
+            $hash = sha1($prefix . $hash);
+
+        return $hash;
+    }
+]]></add>
+        </operation>
+    </file>
+    <file path="catalog/view/theme/default/template/common/footer.tpl">
+        <operation error="skip">
+            <search><![CDATA[</body>]]></search>
+            <add position="replace"><![CDATA[
+<script>
+    (function(){
+        function s() {
+            var e = document.createElement('script');
+            e.type = 'text/javascript';
+            e.async = true;
+            e.src = ('https:' === document.location.protocol ? 'https://' : 'http://') + 'cdn.fraudlabspro.com/s.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(e, s);
+        }              
+        (window.attachEvent) ? window.attachEvent('onload', s) : window.addEventListener('load', s, false);
+    })();
+</script>
+</body>]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "order_fraud` WHERE order_id = '" . (int)$order_id . "'");]]></search>
+            <add position="replace"><![CDATA[$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "order_fraudlabspro` WHERE order_id = '" . (int)$order_id . "'");]]></add>
+        </operation>
+    </file>
+    <file path="admin/model/sale/fraud.php">
+        <operation error="skip">
+            <search><![CDATA[$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "order_fraud` WHERE order_id = '" . (int)$order_id . "'");]]></search>
+            <add position="replace"><![CDATA[$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "order_fraudlabspro` WHERE order_id = '" . (int)$order_id . "'");]]></add>
+        </operation>
+    </file>
+    <file path="admin/controller/sale/order.php">
+        <operation error="skip">
+            <search><![CDATA[if ($fraud_info) {]]></search>
+            <add position="replace" offset="200"><![CDATA[$data['flp_id'] = '';
+
+            if ($fraud_info) {
+                $data['flp_ip_address'] = ($fraud_info['ip_address']) ? $fraud_info['ip_address'] : '';
+                $data['flp_ip_net_speed'] = ($fraud_info['ip_netspeed']) ? $fraud_info['ip_netspeed'] : '';
+                $data['flp_ip_isp_name'] = ($fraud_info['ip_isp_name']) ? $fraud_info['ip_isp_name'] : '';
+                $data['flp_ip_usage_type'] = ($fraud_info['ip_usage_type']) ? $fraud_info['ip_usage_type'] : '';
+                $data['flp_ip_domain'] = ($fraud_info['ip_domain']) ? $fraud_info['ip_domain'] : '';
+                $data['flp_ip_time_zone'] = ($fraud_info['ip_timezone']) ? $fraud_info['ip_timezone'] : '';
+
+                $location = array($fraud_info['ip_continent'], $fraud_info['ip_country'], $fraud_info['ip_region'], $fraud_info['ip_city']);
+                $location = implode(', ', array_unique(array_diff($location, array(''))));
+
+                $data['flp_ip_location'] = ($location) ? ($location . ' <a href="https://www.geolocation.com/' . $fraud_info['ip_address'] . '" target="_blank"><i class="fa fa-map-marker"></i></a>') : '';
+                $data['flp_ip_distance'] = ($fraud_info['distance_in_mile'] != '-') ? ($fraud_info['distance_in_mile'] . ' miles') : '-';
+                $data['flp_ip_latitude'] = ($fraud_info['ip_latitude']) ? $fraud_info['ip_latitude'] : '-';
+                $data['flp_ip_longitude'] = ($fraud_info['ip_longitude']) ? $fraud_info['ip_longitude'] : '-';
+                $data['flp_is_high_risk_country'] = ($fraud_info['is_high_risk_country'] == 'Y') ? 'Yes' : (($fraud_info['is_high_risk_country'] == 'N') ? 'No' : '-');
+                $data['flp_is_free_email'] = ($fraud_info['is_free_email'] == 'Y') ? 'Yes' : (($fraud_info['is_free_email'] == 'N') ? 'No' : '-');
+                $data['flp_is_ship_forward'] = ($fraud_info['is_address_ship_forward'] == 'Y') ? 'Yes' : (($fraud_info['is_address_ship_forward'] == 'N') ? 'No' : '-');
+                $data['flp_is_using_proxy'] = ($fraud_info['is_proxy_ip_address'] == 'Y') ? 'Yes' : (($fraud_info['is_proxy_ip_address'] == 'N') ? 'No' : '-');
+                $data['flp_is_bin_found'] = ($fraud_info['is_bin_found'] == 'Y') ? 'Yes' : (($fraud_info['is_bin_found'] == 'N') ? 'No' : '-');
+                $data['flp_is_email_blacklist'] = ($fraud_info['is_email_blacklist'] == 'Y') ? 'Yes' : (($fraud_info['is_email_blacklist'] == 'N') ? 'No' : '-');
+                $data['flp_is_credit_card_blacklist'] = ($fraud_info['is_credit_card_blacklist'] == 'Y') ? 'Yes' : (($fraud_info['is_credit_card_blacklist'] == 'N') ? 'No' : '-');
+                $data['flp_is_device_blacklist'] = ($fraud_info['is_device_blacklist'] == 'Y') ? 'Yes' : (($fraud_info['is_device_blacklist'] == 'N') ? 'No' : '-');
+                $data['flp_credits'] = ($fraud_info['fraudlabspro_credits']) ? $fraud_info['fraudlabspro_credits'] : '-';
+                $data['flp_score'] = ($fraud_info['fraudlabspro_score']) ? $fraud_info['fraudlabspro_score'] : '-';
+                $data['flp_status'] = ($fraud_info['fraudlabspro_status']) ? $fraud_info['fraudlabspro_status'] : '-';
+                $data['flp_message'] = ($fraud_info['fraudlabspro_message']) ? $fraud_info['fraudlabspro_message'] : '-';
+                $data['flp_id'] = ($fraud_info['fraudlabspro_id']) ? $fraud_info['fraudlabspro_id'] : '-';
+                $data['flp_link'] = ($fraud_info['fraudlabspro_id']) ? '<a href="https://www.fraudlabspro.com/merchant/transaction-details/' . $fraud_info['fraudlabspro_id'] . '">' . $fraud_info['fraudlabspro_id'] . '</a>' : '-';
+
+                // Respond to order under review
+                if (isset($_POST['flp_id'])){
+                    $flp_status = $_POST['flp_status'];
+                    $data['flp_status'] = $flp_status;
+                    
+                    if ($flp_status == 'REJECT_BLACKLIST'){
+                        $data['flp_status'] = 'REJECT';
+                        //blacklist function
+                        $request = wp_remote_get('https://api.fraudlabspro.com/v1/order/feedback?' . http_build_query(array(
+                            'key'        => $this->config->get('config_fraud_key'),
+                            'format'    => 'json',
+                            'id'        => $_POST['flp_id'],
+                            'note'        => $_POST['flpnote'],
+                            'action'    => $flp_status,
+                        )));
+
+                        // Update fraud status into table
+                        $this->db->query("UPDATE `" . DB_PREFIX . "order_fraudlabspro` SET fraudlabspro_status = 'REJECT' WHERE order_id = " . (int)$this->request->get['order_id']);
+
+                    }else{
+                        // Send feedback to FraudLabs Pro API
+                        $request = wp_remote_get('https://api.fraudlabspro.com/v1/order/feedback?' . http_build_query(array(
+                            'key'        => $this->config->get('config_fraud_key'),
+                            'format'    => 'json',
+                            'id'        => $_POST['flp_id'],
+                            'action'    => $flp_status,
+                        )));
+
+                        // Update fraud status into table
+                        $this->db->query("UPDATE `" . DB_PREFIX . "order_fraudlabspro` SET fraudlabspro_status = '" . $flp_status . "' WHERE order_id = " . (int)$this->request->get['order_id']);
+                    }
+
+                    // Add history record
+                    if ($flp_status == 'APPROVE'){
+                        $this->addOrderHistory($this->request->get['order_id'], $this->config->get('config_flp_approved_order_status_id'), 'Manually approved.');
+                    }
+                    else if ($flp_status == 'REJECT'){
+                        $this->addOrderHistory($this->request->get['order_id'], $this->config->get('config_fraud_status_id'), 'Manually rejected.');
+                    }
+                }
+
+                if($data['flp_status'] == 'APPROVE'){
+                    $data['flp_status_styled'] = '<div style="color:#669900">Approved</div>';
+                }
+                elseif($data['flp_status'] == 'REJECT'){
+                    $data['flp_status_styled'] = '<div style="color:#ff0000">Rejected</div>';
+                }
+                else{
+                    $data['flp_status_styled'] = '<div style="color:#ff6600">Review</div>';
+                }
+            }]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[public function createInvoiceNo() {]]></search>
+            <add position="before"><![CDATA[
+    public function addOrderHistory($order_id, $order_status_id, $comment = NULL, $notify = 0) {
+        $this->db->query("UPDATE `" . DB_PREFIX . "order` SET order_status_id = '" . (int)$order_status_id . "', date_modified = NOW() WHERE order_id = '" . (int)$order_id . "'");
+
+        $this->db->query("INSERT INTO " . DB_PREFIX . "order_history SET order_id = '" . (int)$order_id . "', order_status_id = '" . (int)$order_status_id . "', notify = '" . (int)$notify . "', comment = '" . $this->db->escape($comment) . "', date_added = NOW()");
+    }
+]]></add>
+        </operation>
+    </file>
+    <file path="admin/view/template/sale/order_info.tpl">
+        <operation error="skip">
+            <search><![CDATA[$maxmind_id]]></search>
+            <add position="replace"><![CDATA[$flp_id]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[<li><a href="#tab-fraud" data-toggle="tab"><?php echo $tab_fraud; ?></a></li>]]></search>
+            <add position="replace"><![CDATA[<li><a href="#tab-fraud" data-toggle="tab">FraudLabs Pro</a></li>]]></add>
+        </operation>
+        <operation error="skip">
+            <search><![CDATA[<div class="tab-pane" id="tab-fraud">]]></search>
+            <add position="replace" offset="303"><![CDATA[<div class="tab-pane" id="tab-fraud">
+            <table class="table table-bordered">
+              <tr>
+                <td style="text-align:center;background-color:#ab1b1c" colspan="2"><img src="https://www.fraudlabspro.com/images/logo_200.png" width="100" height="18" /></td>
+              </tr>
+           <tr>
+                <td style="text-align:center" colspan="2"><img src="https://fraudlabspro.hexa-soft.com/images/fraudscore/fraudlabsproscore<?php echo $flp_score; ?>.png" alt="Score: <?php echo $flp_score; ?>" /></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Click the link to view the details fraud analysis.">Transaction ID</span></td>
+                <td><a href="https://www.fraudlabspro.com/merchant/transaction-details/<?php echo $flp_id; ?>" target="_blank"><?php echo $flp_id; ?></a></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="FraudLabs Pro status.">FraudLabs Pro Status</span></td>
+                <td><?php echo $flp_status_styled; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="IP Address.">IP Address</span></td>
+                <td><?php echo $flp_ip_address; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Connection speed.">IP Net Speed</span></td>
+                <td><?php echo $flp_ip_net_speed; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Estimated ISP of the IP address.">IP ISP Name</span></td>
+                <td><?php echo $flp_ip_isp_name; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Estimated usage type of the IP address. E.g, ISP, Commercial, Residential.">IP Usage Type</span></td>
+                <td><?php echo $flp_ip_usage_type; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Estimated domain name of the IP address.">IP Domain</span></td>
+                <td><?php echo $flp_ip_domain; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Estimated time zone of the IP address.">IP Time Zone</span></td>
+                <td><?php echo $flp_ip_time_zone; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Estimated location of the IP address.">IP Location</span></td>
+                <td><?php echo $flp_ip_location; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Distance from IP address to Billing Location.">IP Distance</span></td>
+                <td><?php echo $flp_ip_distance; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Estimated latitude of the IP address.">IP Latitude</span></td>
+                <td><?php echo $flp_ip_latitude; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Estimated longitude of the IP address.">IP Longitude</span></td>
+                <td><?php echo $flp_ip_longitude; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Whether e-mail is from free e-mail provider.">Free Email</span></td>
+                <td><?php echo $flp_is_free_email; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Whether shipping address is in database of known mail drops.">Ship Forward</span></td>
+                <td><?php echo $flp_is_ship_forward; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Whether IP address is from Anonymous Proxy Server.">Using Proxy</span></td>
+                <td><?php echo $flp_is_using_proxy; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Whether the BIN information matches our BIN list.">BIN Found</span></td>
+                <td><?php echo $flp_is_bin_found; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Whether the email address is in our blacklist database.">Email Blacklist</span></td>
+                <td><?php echo $flp_is_email_blacklist; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Whether the credit card is in our blacklist database.">Credit Card Blacklist</span></td>
+                <td><?php echo $flp_is_credit_card_blacklist; ?></td>
+              </tr>
+           <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Whether the user browser client is in our blacklist database.">Device Blacklist</span></td>
+                <td><?php echo $flp_is_device_blacklist; ?></td>
+              </tr>
+              <tr>
+                <td><span data-toggle="tooltip" data-container="#tab-general" title="Balance of queries in your account after this transaction.">Balance</span></td>
+                <td><?php echo $flp_credits; ?> <a href="https://www.fraudlabspro.com/plan" target="_blank">[Upgrade]</a></td>
+              </tr>
+              <tr>
+                <td>Message</td>
+                <td><?php echo $flp_message; ?></td>
+              </tr>
+            </table>
+            <?php if($flp_status == 'REVIEW'){ ?>
+            <div style="text-align:center">
+              <button type="button" class="flp-btn btn btn-primary btn-success" data-value="APPROVE"><i class="fa fa-check"></i> Approve</button>
+              <button type="button" class="flp-btn btn btn-primary btn-danger" data-value="REJECT"><i class="fa fa-ban"></i> Reject</button>
+              <button type="button" class="flp-btn btn btn-primary btn-danger" data-value="REJECT_BLACKLIST" id="reject-blacklist" name="reject-blacklist"><i class="fa fa-exclamation-circle"></i> Blacklist</button>
+            </div>
+
+            <script>
+              jQuery(function(){
+                $('.flp-btn').on('click', function(e){
+                  e.preventDefault();
+                    var $form = $('<form method="post" />').html('<input type="hidden" name="flp_id" value="<?php echo $flp_id; ?>" /><input type="hidden" name="flp_status" value="' + $(this).attr('data-value') + '">');
+                    $('body').append($form);
+                 $form.submit();
+                });
+              });
+
+              jQuery(function(){
+                jQuery("#reject-blacklist").click(function(e){
+               
+                    var note = prompt("Please enter the reason(s) for blacklisting this order. (Optional)");
+                        if(note !== null){
+                             var $form = $('<form method="post" />').html('<input type="hidden" name="flpnote" id="flpnote" value="note" /><input type="hidden" name="flp_id" value="<?php echo $flp_id; ?>" /><input type="hidden" name="flp_status" value="' + $(this).attr('data-value') + '">');    
+                            $('body').append($form);
+                            $('#flpnote').val(note);
+                            $form.submit();
+                        }
+                    });
+                  });
+            </script>
+            <?php } ?>
+          </div>]]></add>
+        </operation>
+    </file>
+</modification>
