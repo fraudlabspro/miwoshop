@@ -2,7 +2,7 @@
 <modification>
     <name>FraudLabs Pro Fraud Prevention</name>
     <code>fraudlabspro_integration</code>
-    <version>1.2.2</version>
+    <version>1.2.3</version>
     <link>https://www.fraudlabspro.com</link>
     <author>FraudLabs Pro</author>
 
@@ -345,33 +345,33 @@ jQuery(document).ready(function($){
             $quantity += $product['quantity'];
 
         $url = 'https://api.fraudlabspro.com/v1/order/screen?' . http_build_query(array(
-            'key'                => $this->config->get('config_fraud_key'),
-            'format'            => 'json',
-            'ip'                => (filter_var($this->config->get('config_flp_test_ip'), FILTER_VALIDATE_IP)) ? $this->config->get('config_flp_test_ip') : $ip,
-            'first_name'        => $data['payment_firstname'],
-            'last_name'            => $data['payment_lastname'],
-            'bill_addr'            => trim($data['payment_address_1'] . ' ' . $data['payment_address_2']),
-            'bill_city'            => $data['payment_city'],
-            'bill_state'        => $data['payment_zone'],
-            'bill_zip_code'        => $data['payment_postcode'],
+            'key'                 => $this->config->get('config_fraud_key'),
+            'format'              => 'json',
+            'ip'                  => (filter_var($this->config->get('config_flp_test_ip'), FILTER_VALIDATE_IP)) ? $this->config->get('config_flp_test_ip') : $ip,
+            'first_name'          => $data['payment_firstname'],
+            'last_name'           => $data['payment_lastname'],
+            'bill_addr'           => trim($data['payment_address_1'] . ' ' . $data['payment_address_2']),
+            'bill_city'           => $data['payment_city'],
+            'bill_state'          => $data['payment_zone'],
+            'bill_zip_code'       => $data['payment_postcode'],
             'bill_country'        => $data['payment_iso_code_2'],
-            'user_phone'        => $data['telephone'],
-            'ship_addr'            => trim($data['shipping_address_1'] . ' ' . $data['shipping_address_2']),
-            'ship_city'            => $data['shipping_city'],
-            'ship_state'        => $data['shipping_zone'],
-            'ship_zip_code'        => $data['shipping_postcode'],
+            'user_phone'          => $data['telephone'],
+            'ship_addr'           => trim($data['shipping_address_1'] . ' ' . $data['shipping_address_2']),
+            'ship_city'           => $data['shipping_city'],
+            'ship_state'          => $data['shipping_zone'],
+            'ship_zip_code'       => $data['shipping_postcode'],
             'ship_country'        => $data['shipping_iso_code_2'],
-            'email'                => $data['email'],
+            'email'               => $data['email'],
             'email_domain'        => substr($data['email'], strpos($data['email'], '@') + 1),
-            'email_hash'        => $this->hashString($data['email']) ,
-            'user_order_id'        => $data['order_id'],
-            'amount'            => number_format($data['total'], 2, '.', ''),
+            'email_hash'          => $this->hashString($data['email']) ,
+            'user_order_id'       => $data['order_id'],
+            'amount'              => number_format($data['total'], 2, '.', ''),
             'quantity'            => ($quantity) ? $quantity : 1,
             'currency'            => $data['currency_code'],
             'payment_mode'        => $paymentMode,
             'flp_checksum'        => (isset($_COOKIE['flp_checksum'])) ? $_COOKIE['flp_checksum'] : '',
-            'source'            => 'miwoshop',
-            'source_version'    => '1.2.1',
+            'source'              => 'miwoshop',
+            'source_version'      => '1.2.3',
         ));
 
         $request = wp_remote_get($url);
@@ -528,11 +528,13 @@ jQuery(document).ready(function($){
                         $data['flp_status'] = 'REJECT';
                         //blacklist function
                         $request = wp_remote_get('https://api.fraudlabspro.com/v1/order/feedback?' . http_build_query(array(
-                            'key'        => $this->config->get('config_fraud_key'),
-                            'format'    => 'json',
-                            'id'        => $_POST['flp_id'],
-                            'note'        => $_POST['flpnote'],
-                            'action'    => $flp_status,
+                            'key'            => $this->config->get('config_fraud_key'),
+                            'format'         => 'json',
+                            'id'             => $_POST['flp_id'],
+                            'note'           => $_POST['flpnote'],
+                            'action'         => $flp_status,
+                            'source'         => 'miwoshop',
+                            'triggered_by'   => 'manual',
                         )));
 
                         // Update fraud status into table
@@ -541,10 +543,12 @@ jQuery(document).ready(function($){
                     }else{
                         // Send feedback to FraudLabs Pro API
                         $request = wp_remote_get('https://api.fraudlabspro.com/v1/order/feedback?' . http_build_query(array(
-                            'key'        => $this->config->get('config_fraud_key'),
-                            'format'    => 'json',
-                            'id'        => $_POST['flp_id'],
-                            'action'    => $flp_status,
+                            'key'            => $this->config->get('config_fraud_key'),
+                            'format'         => 'json',
+                            'id'             => $_POST['flp_id'],
+                            'action'         => $flp_status,
+                            'source'         => 'miwoshop',
+                            'triggered_by'   => 'manual',
                         )));
 
                         // Update fraud status into table
